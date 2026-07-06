@@ -7,21 +7,27 @@ import org.openqa.selenium.By;
 import pages.MainPage;
 import pages.OrderPage;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class OrderTest extends BaseTest {
 
+    // Наборы данных для формы заказа (без точки входа — она добавляется отдельно)
+    private static final List<Object[]> ORDER_DATA_SETS = List.of(
+            new Object[]{"Игорь", "Петров", "Москва, ул. Пушкина, 1", "Бульвар Рокоссовского",
+                    "+79261234567", "сутки", "black", "Домофон не работает, позвоните заранее"},
+            new Object[]{"Мария", "Иванова", "Санкт-Петербург, Невский проспект, 10", "Чистые пруды",
+                    "+79161234567", "трое суток", "grey", ""}
+    );
+
+    // Кросс-продукт: каждая точка входа со каждым набором данных (2 x 2 = 4 прогона)
     private static Stream<Arguments> orderData() {
-        return Stream.of(
-                Arguments.of(
-                        "top", "Игорь", "Петров", "Москва, ул. Пушкина, 1", "Бульвар Рокоссовского",
-                        "+79261234567", "сутки", "black", "Домофон не работает, позвоните заранее"),
-                Arguments.of(
-                        "bottom", "Мария", "Иванова", "Санкт-Петербург, Невский проспект, 10", "Чистые пруды",
-                        "+79161234567", "трое суток", "grey", "")
-        );
+        return Stream.of("top", "bottom")
+                .flatMap(entryPoint -> ORDER_DATA_SETS.stream()
+                        .map(data -> Arguments.of(entryPoint, data[0], data[1], data[2], data[3],
+                                data[4], data[5], data[6], data[7])));
     }
 
     @ParameterizedTest(name = "Заказ через кнопку \"{0}\": {1} {2}, {6}")
