@@ -9,6 +9,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class OrderPage {
 
@@ -31,6 +32,8 @@ public class OrderPage {
 
     // Поле "Адрес"
     private final By addressInput = By.cssSelector("input[placeholder='* Адрес: куда привезти заказ']");
+    // Ошибка под полем "Адрес"
+    private final By addressError = By.cssSelector("input[placeholder='* Адрес: куда привезти заказ'] + div");
 
     // Поле "Станция метро"
     private final By metroInput = By.cssSelector("input[placeholder='* Станция метро']");
@@ -75,6 +78,12 @@ public class OrderPage {
     // Всплывающее окно об успешном оформлении заказа
     private final By successPopup = By.cssSelector("[class*='Order_Modal']");
 
+    // Кнопка "Посмотреть статус" в попапе об успешном оформлении заказа
+    private final By viewStatusButton = By.xpath("//button[text()='Посмотреть статус']");
+
+    // Номер заказа подтягивается в попап не сразу после текста "Заказ оформлен"
+    private static final Pattern ORDER_NUMBER_PATTERN = Pattern.compile("Номер заказа:\\s*\\d+");
+
     public OrderPage(WebDriver driver) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -102,11 +111,21 @@ public class OrderPage {
         input.click();
         input.sendKeys(stationName);
         List<WebElement> options = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(metroOptions));
-        options.get(0).click();
+        WebElement matchingOption = options.stream()
+                .filter(option -> option.getText().equals(stationName))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Не найдена станция метро: " + stationName));
+        matchingOption.click();
+        wait.until(driver -> stationName.equals(input.getAttribute("value")));
     }
 
     public void clickNext() {
         driver.findElement(nextButton).click();
+    }
+
+    // Значение поля даты доставки после выбора в календаре, формат "дд.ММ.гггг"
+    public String getSelectedDeliveryDate() {
+        return driver.findElement(dateInput).getAttribute("value");
     }
 
     public OrderPage fillSecondStep(String rentalPeriod, By color, String comment) {
@@ -144,8 +163,17 @@ public class OrderPage {
     }
 
     public String waitForSuccessPopupText() {
-        WebElement popup = wait.until(ExpectedConditions.visibilityOfElementLocated(successPopup));
-        return popup.getText();
+        WebElement confirmPopup = wait.until(ExpectedConditions.visibilityOfElementLocated(successPopup));
+        List<WebElement> confirmButtons = confirmPopup.findElements(By.cssSelector("button"));
+        confirmButtons.get(1).click();
+        wait.until(driver -> ORDER_NUMBER_PATTERN.matcher(driver.findElement(successPopup).getText()).find());
+        return driver.findElement(successPopup).getText();
+    }
+
+    public TrackPage openTrackingPage() {
+        wait.until(ExpectedConditions.elementToBeClickable(viewStatusButton)).click();
+        wait.until(ExpectedConditions.urlContains("/track"));
+        return new TrackPage(driver).openOrderInfo();
     }
 
     // --- Проверки ошибок валидации шага 1 ---
@@ -156,6 +184,10 @@ public class OrderPage {
 
     public boolean isLastNameErrorDisplayed() {
         return driver.findElement(lastNameError).isDisplayed();
+    }
+
+    public boolean isAddressErrorDisplayed() {
+        return driver.findElement(addressError).isDisplayed();
     }
 
     public boolean isPhoneErrorDisplayed() {

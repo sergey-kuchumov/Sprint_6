@@ -51,7 +51,9 @@ public class OrderTest extends BaseTest {
         orderPage.submitOrder();
 
         String popupText = orderPage.waitForSuccessPopupText();
-        assertTrue(popupText.toLowerCase().contains("заказ"),
+        assertTrue(popupText.contains("Заказ оформлен"),
                 "Ожидали текст об успешном оформлении заказа, получили: " + popupText);
+        assertTrue(popupText.contains("Номер заказа"),
+                "Ожидали номер оформленного заказа, получили: " + popupText);
     }
 }

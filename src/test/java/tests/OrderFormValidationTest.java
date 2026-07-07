@@ -1,5 +1,6 @@
 package tests;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import pages.OrderPage;
@@ -42,6 +43,81 @@ public class OrderFormValidationTest extends BaseTest {
                 break;
             default:
                 throw new IllegalArgumentException("Неизвестное поле: " + emptyField);
+        }
+    }
+
+    @ParameterizedTest(name = "Латиница в поле \"{0}\" подсвечивается ошибкой")
+    @ValueSource(strings = {"firstName", "lastName"})
+    public void latinLettersInNameShowValidationError(String field) {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(
+                "firstName".equals(field) ? "Igor" : VALID_FIRST_NAME,
+                "lastName".equals(field) ? "Petrov" : VALID_LAST_NAME,
+                VALID_ADDRESS,
+                VALID_METRO,
+                VALID_PHONE);
+        orderPage.clickNext();
+
+        switch (field) {
+            case "firstName":
+                assertTrue(orderPage.isFirstNameErrorDisplayed(), "Ожидали ошибку под полем \"Имя\" при вводе латиницы");
+                break;
+            case "lastName":
+                assertTrue(orderPage.isLastNameErrorDisplayed(), "Ожидали ошибку под полем \"Фамилия\" при вводе латиницы");
+                break;
+            default:
+                throw new IllegalArgumentException("Неизвестное поле: " + field);
+        }
+    }
+
+    @Test
+    public void phoneWithOnlySymbolsShowsValidationError() {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(VALID_FIRST_NAME, VALID_LAST_NAME, VALID_ADDRESS, VALID_METRO, "!@#$%^&*");
+        orderPage.clickNext();
+
+        assertTrue(orderPage.isPhoneErrorDisplayed(),
+                "Ожидали ошибку под полем \"Телефон\" при вводе одних символов");
+    }
+
+    @Test
+    public void phoneWithOnlyLettersShowsValidationError() {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(VALID_FIRST_NAME, VALID_LAST_NAME, VALID_ADDRESS, VALID_METRO, "абвгдежзик");
+        orderPage.clickNext();
+
+        assertTrue(orderPage.isPhoneErrorDisplayed(),
+                "Ожидали ошибку под полем \"Телефон\" при вводе одних букв");
+    }
+
+    @ParameterizedTest(name = "Символы в поле \"{0}\" подсвечиваются ошибкой")
+    @ValueSource(strings = {"firstName", "lastName", "address"})
+    public void symbolsInFieldShowValidationError(String field) {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(
+                "firstName".equals(field) ? "!@#$%" : VALID_FIRST_NAME,
+                "lastName".equals(field) ? "!@#$%" : VALID_LAST_NAME,
+                "address".equals(field) ? "!@#$%^&*" : VALID_ADDRESS,
+                VALID_METRO,
+                VALID_PHONE);
+        orderPage.clickNext();
+
+        switch (field) {
+            case "firstName":
+                assertTrue(orderPage.isFirstNameErrorDisplayed(), "Ожидали ошибку под полем \"Имя\" при вводе символов");
+                break;
+            case "lastName":
+                assertTrue(orderPage.isLastNameErrorDisplayed(), "Ожидали ошибку под полем \"Фамилия\" при вводе символов");
+                break;
+            case "address":
+                assertTrue(orderPage.isAddressErrorDisplayed(), "Ожидали ошибку под полем \"Адрес\" при вводе символов");
+                break;
+            default:
+                throw new IllegalArgumentException("Неизвестное поле: " + field);
         }
     }
 }
