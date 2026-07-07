@@ -177,25 +177,43 @@ public class OrderPage {
     }
 
     // --- Проверки ошибок валидации шага 1 ---
+    // Блока с текстом ошибки в разметке нет вовсе, если поле прошло валидацию,
+    // поэтому проверяем наличие элемента, а не полагаемся на findElement
 
     public boolean isFirstNameErrorDisplayed() {
-        return driver.findElement(firstNameError).isDisplayed();
+        return isDisplayed(firstNameError);
     }
 
     public boolean isLastNameErrorDisplayed() {
-        return driver.findElement(lastNameError).isDisplayed();
+        return isDisplayed(lastNameError);
     }
 
     public boolean isAddressErrorDisplayed() {
-        return driver.findElement(addressError).isDisplayed();
+        return isDisplayed(addressError);
     }
 
     public boolean isPhoneErrorDisplayed() {
-        return driver.findElement(phoneError).isDisplayed();
+        return isDisplayed(phoneError);
     }
 
     public boolean isMetroErrorDisplayed() {
-        return driver.findElement(metroError).isDisplayed();
+        return isDisplayed(metroError);
+    }
+
+    private boolean isDisplayed(By locator) {
+        List<WebElement> elements = driver.findElements(locator);
+        return !elements.isEmpty() && elements.get(0).isDisplayed();
+    }
+
+    // --- Шаг 2 без выбора срока аренды (для проверки обязательности поля) ---
+
+    public void fillSecondStepWithoutRentalPeriod(By color) {
+        pickFirstAvailableDate();
+        driver.findElement(color).click();
+    }
+
+    public boolean isSuccessPopupDisplayed() {
+        return isDisplayed(successPopup);
     }
 
     public By getColorBlack() {

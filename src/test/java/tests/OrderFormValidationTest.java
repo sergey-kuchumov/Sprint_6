@@ -2,9 +2,12 @@ package tests;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import pages.OrderPage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class OrderFormValidationTest extends BaseTest {
@@ -14,6 +17,12 @@ public class OrderFormValidationTest extends BaseTest {
     private static final String VALID_ADDRESS = "Москва, ул. Пушкина, 1";
     private static final String VALID_METRO = "Бульвар Рокоссовского";
     private static final String VALID_PHONE = "+79261234567";
+
+    private static String repeat(String s, int times) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < times; i++) sb.append(s);
+        return sb.toString();
+    }
 
     @ParameterizedTest(name = "Пустое поле \"{0}\" подсвечивается ошибкой")
     @ValueSource(strings = {"firstName", "lastName", "phone", "metro"})
@@ -119,5 +128,49 @@ public class OrderFormValidationTest extends BaseTest {
             default:
                 throw new IllegalArgumentException("Неизвестное поле: " + field);
         }
+    }
+
+    // Границы длины подтверждены вручную на реальном сайте: 1 символ - ошибка,
+    // 2 и 15 символов - валидно, 16 символов - ошибка
+    @ParameterizedTest(name = "Имя длиной {0} символов: ожидаем ошибку = {1}")
+    @CsvSource({"1, true", "2, false", "15, false", "16, true"})
+    public void firstNameLengthBoundary(int length, boolean expectError) {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(repeat("а", length), VALID_LAST_NAME, VALID_ADDRESS, VALID_METRO, VALID_PHONE);
+        orderPage.clickNext();
+
+        assertEquals(expectError, orderPage.isFirstNameErrorDisplayed(),
+                "Имя из " + length + " символов, ожидали ошибку=" + expectError);
+    }
+
+    // У фамилии верхней границы длины не обнаружено (проверено вручную до 50 символов) -
+    // проверяем только минимальную длину
+    @ParameterizedTest(name = "Фамилия длиной {0} символов: ожидаем ошибку = {1}")
+    @CsvSource({"1, true", "2, false"})
+    public void lastNameMinLength(int length, boolean expectError) {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(VALID_FIRST_NAME, repeat("а", length), VALID_ADDRESS, VALID_METRO, VALID_PHONE);
+        orderPage.clickNext();
+
+        assertEquals(expectError, orderPage.isLastNameErrorDisplayed(),
+                "Фамилия из " + length + " символов, ожидали ошибку=" + expectError);
+    }
+
+    @Test
+    public void rentalPeriodRequiredToCompleteOrder() throws InterruptedException {
+        OrderPage orderPage = new OrderPage(driver).open();
+
+        orderPage.fillFirstStep(VALID_FIRST_NAME, VALID_LAST_NAME, VALID_ADDRESS, VALID_METRO, VALID_PHONE);
+        orderPage.clickNext();
+        orderPage.fillSecondStepWithoutRentalPeriod(orderPage.getColorBlack());
+        orderPage.submitOrder();
+        // Негативная проверка: ждём немного, чтобы дать попапу шанс появиться, если бы
+        // клик всё-таки сработал - дождаться "отсутствия" события штатным wait нельзя
+        Thread.sleep(1000);
+
+        assertFalse(orderPage.isSuccessPopupDisplayed(),
+                "Без выбора срока аренды заказ не должен оформляться");
     }
 }
